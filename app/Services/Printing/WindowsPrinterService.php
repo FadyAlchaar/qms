@@ -23,21 +23,19 @@ class WindowsPrinterService
             );
         }
 
-        $ps1 = tempnam(sys_get_temp_dir(), 'qms-print-');
+        $ps1 = sys_get_temp_dir()
+                . DIRECTORY_SEPARATOR
+                . 'qms-print-' . uniqid() . '.ps1';
 
-        if ($ps1 === false) {
-            throw new RuntimeException(
-                'Unable to create a temporary PowerShell script.'
-            );
-        }
-
-        try {
-            $script = $this->buildPowerShellScript(
-                $printerName,
-                $content
-            );
-
-            file_put_contents($ps1, $script);
+            try {
+                if (file_put_contents(
+                    $ps1,
+                    $this->buildPowerShellScript($printerName, $content)
+                ) === false) {
+                    throw new RuntimeException(
+                        'Unable to create the temporary PowerShell script.'
+                    );
+                }
 
             $command =
                 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File '
