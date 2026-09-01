@@ -11,6 +11,7 @@ class QueueTicket extends Model
         'service_id',
         'ticket_number',
         'sequence_number',
+        'sequence_date',
         'status',
         'priority',
         'source',
@@ -31,6 +32,7 @@ class QueueTicket extends Model
     protected $casts = [
         'priority' => 'integer',
         'sequence_number' => 'integer',
+        'sequence_date' => 'date',
         'recall_count' => 'integer',
         'issued_at' => 'datetime',
         'called_at' => 'datetime',

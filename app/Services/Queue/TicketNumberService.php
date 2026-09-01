@@ -49,20 +49,27 @@ class TicketNumberService
          * for this service today.
          */
         if (!$sequence) {
-            $sequence = TicketSequence::create([
+            TicketSequence::query()->insertOrIgnore([
                 'branch_id' => $branchId,
                 'service_id' => $serviceId,
-                'sequence_date' => $today,
+                'sequence_date' => $today->toDateString(),
                 'current_number' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
-            /*
-             * Re-read with FOR UPDATE.
-             */
             $sequence = TicketSequence::query()
-                ->whereKey($sequence->id)
+                ->where('branch_id', $branchId)
+                ->where('service_id', $serviceId)
+                ->whereDate('sequence_date', $today)
                 ->lockForUpdate()
                 ->first();
+
+            if (!$sequence) {
+                throw new RuntimeException(
+                    'Unable to initialize the ticket sequence.'
+                );
+            }
         }
 
         $nextNumber = $sequence->current_number + 1;

@@ -167,6 +167,7 @@ class TicketIssuanceService
                 'branch_id' => $branchId,
                 'service_id' => $serviceId,
                 'ticket_number' => $number['ticket_number'],
+                'sequence_date' => $number['sequence_date'],
                 'sequence_number' => $number['sequence_number'],
                 'status' => 'waiting',
                 'priority' => $priority,
@@ -207,34 +208,31 @@ class TicketIssuanceService
                 'issued_at' => now(),
             ]);
 
-            /*
+        /*
         * Resolve the printer assigned to this issuance point.
         */
-        $printerId = null;
+        $issuancePoint = \App\Models\TicketIssuancePoint::query()
+            ->where('id', $issuancePointId)
+            ->where('branch_id', $branchId)
+            ->where('enabled', 1)
+            ->first();
 
-        if ($issuancePointId !== null) {
-            $issuancePoint = \App\Models\TicketIssuancePoint::query()
-                ->where('id', $issuancePointId)
-                ->where('branch_id', $branchId)
-                ->where('enabled', 1)
-                ->first();
-
-            if (!$issuancePoint) {
-                throw new RuntimeException(
-                    'The selected ticket issuance point is not available.'
-                );
-            }
-
-            $printer = $issuancePoint->printer;
-
-            if (!$printer || !$printer->enabled) {
-                throw new RuntimeException(
-                    'No enabled printer is assigned to the selected ticket issuance point.'
-                );
-            }
-
-            $printerId = $printer->id;
+        if (!$issuancePoint) {
+            throw new RuntimeException(
+                'The selected ticket issuance point is not available.'
+            );
         }
+
+        $printer = $issuancePoint->printer;
+
+        if (!$printer || !$printer->enabled) {
+            throw new RuntimeException(
+                'The issuance point printer is unavailable.'
+            );
+        }
+
+        $printerId = $printer->id;
+        $fallbackPrinterId = $printer->fallback_printer_id;
 
         /*
         * Create the server-side print job.
@@ -255,7 +253,7 @@ class TicketIssuanceService
                 'service_id' => $serviceId,
             ],
             'queued_at' => now(),
-            'fallback_printer_id' => null,
+            'fallback_printer_id' => $fallbackPrinterId,
         ]);
 
             return $ticket->fresh();

@@ -11,12 +11,14 @@ class ProcessPrintJobs extends Command
     /**
      * The name and signature of the console command.
      */
-    protected $signature = 'app:process-print-jobs';
+    protected $signature = 'app:process-print-jobs
+                            {--once : Process one pending print job and exit}
+                            {--sleep=1 : Seconds to wait when there are no pending jobs}';
 
     /**
      * The console command description.
      */
-    protected $description = 'Process one pending print job';
+    protected $description = 'Continuously process pending print jobs';
 
     /**
      * Execute the console command.
@@ -24,26 +26,61 @@ class ProcessPrintJobs extends Command
     public function handle(
         PrintJobProcessor $processor
     ): int {
-        try {
-            $processed = $processor->processOne();
+        $sleep = max(1, (int) $this->option('sleep'));
 
-            if (!$processed) {
-                $this->info('No pending print jobs.');
+        /*
+         * --once mode
+         *
+         * Useful for testing and troubleshooting.
+         */
+        if ($this->option('once')) {
+            try {
+                $processed = $processor->processOne();
+
+                if (!$processed) {
+                    $this->info('No pending print jobs.');
+
+                    return self::SUCCESS;
+                }
+
+                $this->info('Print job processed successfully.');
 
                 return self::SUCCESS;
+
+            } catch (Throwable $e) {
+                $this->error(
+                    'Print job failed: ' . $e->getMessage()
+                );
+
+                return self::FAILURE;
             }
+        }
 
-            $this->info('Print job processed successfully.');
+        /*
+         * Continuous worker mode.
+         */
+        $this->info('Print job worker started.');
 
-            return self::SUCCESS;
+        while (true) {
+            try {
+                $processed = $processor->processOne();
 
-        } catch (Throwable $e) {
+                if (!$processed) {
+                    sleep($sleep);
+                }
 
-            $this->error(
-                'Print job failed: ' . $e->getMessage()
-            );
+            } catch (Throwable $e) {
 
-            return self::FAILURE;
+                $this->error(
+                    'Print job failed: ' . $e->getMessage()
+                );
+
+                /*
+                 * Prevent a failed job from causing
+                 * a tight error loop.
+                 */
+                sleep($sleep);
+            }
         }
     }
 }
