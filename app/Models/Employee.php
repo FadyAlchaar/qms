@@ -14,6 +14,7 @@ class Employee extends Model
     use HasFactory;
 
     protected $fillable = [
+        'organization_id',
         'branch_id',
         'employee_number',
         'name',
